@@ -83,3 +83,5 @@ test:
 #
 production:
   <<: *default
+  username: <%= ENV["DB_SECRET"]["username"] %>
+  password: <%= ENV["DB_SECRET"]["password"] %>
