@@ -55,8 +55,8 @@ export class ApiStack extends Stack {
         command: [ "CMD-SHELL", "curl -f http://localhost/health || exit 1" ],
         interval: Duration.minutes(1),
         retries: 3,
-        startPeriod: Duration.minutes(1),
-        timeout: Duration.minutes(2),
+        startPeriod: Duration.minutes(2),
+        timeout: Duration.minutes(1),
       },
       environment: {
         RAILS_ENV: 'production',
