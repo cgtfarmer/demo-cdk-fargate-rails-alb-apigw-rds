@@ -56,14 +56,15 @@ export class ApiStack extends Stack {
         interval: Duration.minutes(1),
         retries: 3,
         startPeriod: Duration.minutes(1),
-        timeout: Duration.minutes(1),
+        timeout: Duration.minutes(2),
       },
       environment: {
-        MAVEN_CONFIG: '/root/.m2',
-        SERVER_PORT: '80',
-        SPRING_PROFILES_ACTIVE: 'deployed',
-        SPRING_DATASOURCE_DRIVERCLASSNAME: 'org.postgresql.Driver',
-        SPRING_DATASOURCE_URL: `jdbc:postgresql://${props.rdsProxy.endpoint}:${props.rdsPort}/${props.rdsDbName}`
+        RAILS_ENV: 'production',
+        PORT: '80',
+        BUNDLE_PATH: '/usr/local/bundle',
+        DB_HOST: props.rdsProxy.endpoint,
+        DB_PORT: props.rdsPort,
+        DB_DATABASE: props.rdsDbName,
       },
       secrets: {
         DB_SECRET: EcsSecret.fromSecretsManager(props.rdsSecret),
@@ -76,6 +77,7 @@ export class ApiStack extends Stack {
       taskDefinition,
       assignPublicIp: false,
       desiredCount: 2,
+      healthCheckGracePeriod: Duration.minutes(2),
     });
 
     // This direction is incorrect due to causing cyclic dependencies
