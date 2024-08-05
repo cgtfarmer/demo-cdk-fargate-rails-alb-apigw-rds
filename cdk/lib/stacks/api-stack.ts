@@ -4,9 +4,9 @@ import { CorsHttpMethod, HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv
 import { HttpAlbIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { InstanceClass, InstanceSize, InstanceType, Port, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { DatabaseProxy } from 'aws-cdk-lib/aws-rds';
-import { ISecret } from 'aws-cdk-lib/aws-secretsmanager';
+import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { AwsLogDriverMode, Cluster, FargateService, FargateTaskDefinition, LogDrivers, Protocol, Secret as EcsSecret, AssetImage } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { ApplicationLoadBalancer, ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface ApiStackProps extends StackProps {
   vpc: Vpc;
@@ -25,6 +25,16 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
+    const railsSecretKeyBaseSecret = new Secret(this, 'RailsSecretKeyBaseSecret', {
+      generateSecretString: {
+        excludeUppercase: true,
+        excludePunctuation: true,
+        includeSpace: false,
+        passwordLength: 129,
+        requireEachIncludedType: true
+      }
+    });
+
     const cluster = new Cluster(this, 'Cluster', {
       vpc: props.vpc,
       capacity: {
@@ -42,7 +52,7 @@ export class ApiStack extends Stack {
     taskDefinition.addContainer('DefaultContainer', {
       image: AssetImage.fromAsset('src/user-service', {
         // References: Dockerfile "FROM (...) AS <target-name>"
-        target: 'user-service',
+        target: 'production',
       }),
       memoryLimitMiB: 1024,
       logging: LogDrivers.awsLogs({
@@ -50,9 +60,10 @@ export class ApiStack extends Stack {
         mode: AwsLogDriverMode.NON_BLOCKING,
         maxBufferSize: Size.mebibytes(25),
       }),
-      portMappings: [ { containerPort: 80, protocol: Protocol.TCP, } ],
+      // Note: hostPort will be the same as containerPort due to AwsVpc Docker network mode
+      portMappings: [ { containerPort: 3000, protocol: Protocol.TCP, } ],
       healthCheck: {
-        command: [ "CMD-SHELL", "curl -f http://localhost/health || exit 1" ],
+        command: [ "CMD-SHELL", "curl -f http://localhost:3000/health || exit 1" ],
         interval: Duration.minutes(1),
         retries: 3,
         startPeriod: Duration.minutes(2),
@@ -60,7 +71,7 @@ export class ApiStack extends Stack {
       },
       environment: {
         RAILS_ENV: 'production',
-        PORT: '80',
+        PORT: '3000',
         BUNDLE_PATH: '/usr/local/bundle',
         DB_HOST: props.rdsProxy.endpoint,
         DB_PORT: props.rdsPort,
@@ -68,6 +79,7 @@ export class ApiStack extends Stack {
       },
       secrets: {
         DB_SECRET: EcsSecret.fromSecretsManager(props.rdsSecret),
+        SECRET_KEY_BASE: EcsSecret.fromSecretsManager(railsSecretKeyBaseSecret),
         // PARAMSTORE_SECRET: EcsSecret.fromSsmParameter(parameter),
       }
     });
@@ -91,7 +103,8 @@ export class ApiStack extends Stack {
 
     const listener = alb.addListener('AlbListener', { port: 80 });
     listener.addTargets('target', {
-      port: 80,
+      port: 3000,
+      protocol: ApplicationProtocol.HTTP,
       targets: [ fargateService ],
       healthCheck: {
         path: '/health',

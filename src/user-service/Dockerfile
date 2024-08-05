@@ -4,7 +4,7 @@
 ARG RUBY_VERSION=3.3.4
 
 
-FROM ruby:$RUBY_VERSION as development
+FROM ruby:$RUBY_VERSION AS development
 
 ENV LANG=C.UTF-8 \
   APP_HOME=/rails \
@@ -15,7 +15,7 @@ WORKDIR $APP_HOME
 CMD bin/rails server -b 0.0.0.0
 
 
-FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim as base
+FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim AS base
 
 # Rails app lives here
 WORKDIR /rails
@@ -28,7 +28,7 @@ ENV RAILS_ENV="production" \
 
 
 # Throw-away build stage to reduce size of final image
-FROM base as build
+FROM base AS build
 
 # Install packages needed to build gems
 RUN apt-get update -qq && \
@@ -48,7 +48,7 @@ RUN bundle exec bootsnap precompile app/ lib/
 
 
 # Final stage for app image
-FROM base
+FROM base AS production
 
 # Install packages needed for deployment
 RUN apt-get update -qq && \

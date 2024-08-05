@@ -1,7 +1,7 @@
 require 'json'
 
 Rails.application.config.before_configuration do
-  unless Rails.env.production? return;
+  return unless Rails.env.production?
 
   db_secret_string = ENV['DB_SECRET']
 

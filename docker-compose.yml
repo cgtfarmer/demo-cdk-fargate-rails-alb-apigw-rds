@@ -7,13 +7,15 @@ services:
       target: development
     environment:
       RAILS_ENV: development
+      PORT: 80
       BUNDLE_PATH: /usr/local/bundle
-      DB_ADAPTER: postgresql
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: postgres
       DB_PASSWORD: super
-      DB_DATABASE: postgresql
+      DB_DATABASE: postgres
+      # DB_SECRET: '{"username": "postgres", "password": "super"}'
+      # SECRET_KEY_BASE: d9911ce6a8c5cbfe37ed6d0932f2c43825503501109505af91f2373d7d5f1d460b83d47db45ed97a439dffc061861699b114ffe318c15ac1f1d6bbc416c5f709
     expose:
       - 80
     extra_hosts: # For Linux
