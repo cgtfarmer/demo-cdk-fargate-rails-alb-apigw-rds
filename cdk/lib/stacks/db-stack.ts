@@ -61,7 +61,7 @@ export class DbStack extends Stack {
       vpc: props.vpc,
       allocatedStorage: 10,
       maxAllocatedStorage: 10,
-      iops: 1000,
+      // iops: 1000,
       backupRetention: Duration.days(0),
       databaseName: this.rdsDbName,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -76,7 +76,7 @@ export class DbStack extends Stack {
 
     this.rdsProxy = rdsInstance.addProxy('RdsProxy', {
       secrets: [rdsInstance.secret],
-      debugLogging: true,
+      // debugLogging: true,
       vpc: props.vpc,
     });
   }

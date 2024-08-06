@@ -4,7 +4,7 @@ services:
   user-service:
     build:
       context: src/user-service
-      target: development
+      target: user-service-development
     environment:
       RAILS_ENV: development
       PORT: 80
@@ -24,7 +24,7 @@ services:
     ports:
       - 80:80
     volumes:
-      - ./src/user-service:/rails
+      - ./src/user-service:/usr/src/app
       - user-service-bundle:/usr/local/bundle
 
   db-migration:

@@ -7,6 +7,7 @@ import { DatabaseProxy } from 'aws-cdk-lib/aws-rds';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { AwsLogDriverMode, Cluster, FargateService, FargateTaskDefinition, LogDrivers, Protocol, Secret as EcsSecret, AssetImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancer, ApplicationProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 interface ApiStackProps extends StackProps {
   vpc: Vpc;
@@ -49,21 +50,24 @@ export class ApiStack extends Stack {
       memoryLimitMiB: 1024,
     });
 
+    const appPort = 80;
+
     taskDefinition.addContainer('DefaultContainer', {
       image: AssetImage.fromAsset('src/user-service', {
         // References: Dockerfile "FROM (...) AS <target-name>"
-        target: 'production',
+        target: 'user-service',
       }),
       memoryLimitMiB: 1024,
       logging: LogDrivers.awsLogs({
         streamPrefix: 'TestStreamPrefix',
         mode: AwsLogDriverMode.NON_BLOCKING,
         maxBufferSize: Size.mebibytes(25),
+        logRetention: RetentionDays.ONE_WEEK,
       }),
       // Note: hostPort will be the same as containerPort due to AwsVpc Docker network mode
-      portMappings: [ { containerPort: 3000, protocol: Protocol.TCP, } ],
+      portMappings: [ { containerPort: appPort, protocol: Protocol.TCP, } ],
       healthCheck: {
-        command: [ "CMD-SHELL", "curl -f http://localhost:3000/health || exit 1" ],
+        command: [ "CMD-SHELL", `curl -f http://localhost:${appPort}/health || exit 1` ],
         interval: Duration.minutes(1),
         retries: 3,
         startPeriod: Duration.minutes(2),
@@ -71,7 +75,7 @@ export class ApiStack extends Stack {
       },
       environment: {
         RAILS_ENV: 'production',
-        PORT: '3000',
+        PORT: appPort.toString(),
         BUNDLE_PATH: '/usr/local/bundle',
         DB_HOST: props.rdsProxy.endpoint,
         DB_PORT: props.rdsPort,
@@ -103,7 +107,7 @@ export class ApiStack extends Stack {
 
     const listener = alb.addListener('AlbListener', { port: 80 });
     listener.addTargets('target', {
-      port: 3000,
+      port: appPort,
       protocol: ApplicationProtocol.HTTP,
       targets: [ fargateService ],
       healthCheck: {
